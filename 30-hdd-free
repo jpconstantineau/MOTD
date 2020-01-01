@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mountpoints=('/mnt/sdb1' '/' '/mnt/backup/')
+mountpoints=( '/')
 barWidth=50
 maxDiscUsage=90
 clear="\e[39m\e[0m"
