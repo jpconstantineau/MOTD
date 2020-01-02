@@ -1,17 +1,42 @@
 #!/bin/bash
-sd=(sda sdb sdc sdd sde sdf)
 out=""
-COLUMNS=8
+COLUMNS=1
 clear="\e[0m\e[39m"
 
-my_target_temp=45000
-for i in ${!sd[@]}; do
-    temp=$(smartctl -a /dev/${sd[$i]} | grep Power_On_Hours | grep 9	| awk '{print $10}' 2> /dev/null)
+my_target_hours=45000
+my_target_temp=45
+my_target_cps=1
+
+for dev in /dev/sd?; do
+    cmdstr=$(smartctl -a $dev )
+    cps=$(echo "$cmdstr" | grep Current_Pending_Sector | grep 197  | awk '{print $10}' 2> /dev/null)
+    model=$(echo "$cmdstr" | grep 'Device Model' | awk '{ s = ""; for (i = 3; i <= NF; i++) s = s $i " "; print s }')
+    serial=$(echo "$cmdstr" | grep 'Serial Number' | awk '{ s = ""; for (i = 3; i <= NF; i++) s = s $i " "; print s }' )
+    capacity=$(echo "$cmdstr" | grep 'User Capacity' | awk '{ s = ""; for (i = 3; i <= NF; i++) s = s $i " "; print s }'| awk -F'[][]' '{print $2}' )
+    temp=$(echo "$cmdstr" | grep Temperature_Celsius | awk '{print $10}' )
+    hours=$(echo "$cmdstr" | grep Power_On_Hours | awk  '{print $10}' | awk -F '[^0-9]+' '{ print($1)}' )
+    color="\e[42m"
+    if [ "$hours" -ge "${my_target_hours}" ]; then
+        color="\e[41m"
+    fi
+    out+="$dev \t $capacity  \t\e[30m $color $hours $clear ,"
     color="\e[42m"
     if [ "$temp" -ge "${my_target_temp}" ]; then
         color="\e[41m"
     fi
-    out+="${sd[$i]} \e[30m $color $temp $clear ,"
+    out+="\t\e[30m $color$temp $clear"
+    color="\e[42m"
+    if ! [[ "$cps" =~ ^[0-9]+$ ]]; then
+      cps="n/a"
+    else
+      if [ "$cps" -ge "${my_target_cps}" ]; then
+        color="\e[41m"
+      fi
+    fi
+    out+="\t\t\e[30m $color $cps $clear \t\t $model \t $serial"
+
+
+
     c=i+1
     if [ $((($i+1) % $COLUMNS)) -eq 0 ]; then
 		out+="\n"
@@ -19,5 +44,5 @@ for i in ${!sd[@]}; do
 done
 out+="\n"
 echo -e "
-HDD Power-On Hours:"
+  HDD \t\t Size \t\t Hours \t\t Temperature\tPending Sectors\t Model \t\t\t Serial"
 printf "$out" | column -c $c -ts $',' | sed -e 's/^/  /'
