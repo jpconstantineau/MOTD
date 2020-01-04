@@ -1,48 +1,140 @@
 #!/bin/bash
+outnames="Device    Size     5:#   9:hrs     12:#     187:#    188:# 189:#   194:C  197:# 198:# Model                  Serial\n"
 out=""
-COLUMNS=1
+#out+=$outnames
+#out+="\n"
 clear="\e[0m\e[39m"
 
 my_target_hours=45000
 my_target_temp=45
 my_target_cps=1
+my_target_rsc=1
+my_target_rue=1
+my_target_ct=1
+my_target_usc=1
+
+COLUMNS=1
+
 
 for dev in /dev/sd?; do
     cmdstr=$(smartctl -a $dev )
-    cps=$(echo "$cmdstr" | grep Current_Pending_Sector | grep 197  | awk '{print $10}' 2> /dev/null)
     model=$(echo "$cmdstr" | grep 'Device Model' | awk '{ s = ""; for (i = 3; i <= NF; i++) s = s $i " "; print s }')
     serial=$(echo "$cmdstr" | grep 'Serial Number' | awk '{ s = ""; for (i = 3; i <= NF; i++) s = s $i " "; print s }' )
     capacity=$(echo "$cmdstr" | grep 'User Capacity' | awk '{ s = ""; for (i = 3; i <= NF; i++) s = s $i " "; print s }'| awk -F'[][]' '{print $2}' )
-    temp=$(echo "$cmdstr" | grep Temperature_Celsius | awk '{print $10}' )
-    hours=$(echo "$cmdstr" | grep Power_On_Hours | awk  '{print $10}' | awk -F '[^0-9]+' '{ print($1)}' )
+    rsc=$(echo "$cmdstr" |  grep Reallocated_Sector_Ct  | awk '{print $10}')
+    rbc=$(echo "$cmdstr" |  grep Retired_Block_Count  | awk '{print $10}')
+    hours=$(echo "$cmdstr" | grep 9 | grep Power_On_Hours | awk  '{print $10}' | awk -F '[^0-9]+' '{ print($1)}' )
+    pc=$(echo "$cmdstr"  | grep 12 | grep Power_Cycle_Count | awk  '{print $10}' | awk -F '[^0-9]+' '{ print($1)}' )
+    rue=$(echo "$cmdstr" | grep 187 | grep Reported_Uncorrect | awk '{print $10}' )
+    ct=$(echo "$cmdstr"  | grep 188 | grep Command_Timeout | awk '{print $10}' )
+    hfw=$(echo "$cmdstr" | grep 189 | grep High_Fly_Writes | awk '{print $10}' )
+    temp=$(echo "$cmdstr" | grep 194 | grep Temperature_Celsius | awk '{print $10}' )
+    cps=$(echo "$cmdstr" | grep 197 | grep Current_Pending_Sector  | awk '{print $10}' 2> /dev/null)
+    usc=$(echo "$cmdstr" | grep 198 | grep Offline_Uncorrectable  | awk '{print $10}' 2> /dev/null)
+
+    #echo $rsc $rbc $hours $pc $rue $ct $hfw $temp $cps $usc
+
+    out+="$dev|$capacity|"
+    color="\e[42m"
+    if  [[ "$rsc" =~ ^[0-9]+$ ]]; then
+      if [ "$rsc" -ge "${my_target_rsc}" ]; then
+        color="\e[41m"
+      fi
+      out+="\e[30m$color$rsc$clear| |"
+    else
+      if  [[ "$rbc" =~ ^[0-9]+$ ]]; then
+        if [ "$rbc" -ge "${my_target_rsc}" ]; then
+          color="\e[41m"
+        fi
+        out+="\e[30m$color$rbc$clear| |"
+      else
+        out+="?| |"
+      fi
+    fi
+
     color="\e[42m"
     if [ "$hours" -ge "${my_target_hours}" ]; then
         color="\e[41m"
     fi
-    out+="$dev \t $capacity  \t\e[30m $color $hours $clear ,"
+
+    out+="\e[30m$color$hours$clear| |"
+
+    color="\e[42m"
+
+    out+="\e[30m$color$pc$clear| |"
+
+    if ! [[ "$rue" =~ ^[0-9]+$ ]]; then
+      rue="-"
+    else
+      if [ "$rue" -ge "${my_target_rue}" ]; then
+        color="\e[41m"
+      fi
+    fi
+    out+="\e[30m$color$rue$clear| | |"
+
+    if ! [[ "$ct" =~ ^[0-9]+$ ]]; then
+      ct="-"
+    else
+      if [ "$ct" -ge "${my_target_ct}" ]; then
+        color="\e[41m"
+      fi
+    fi
+    out+="\e[30m$color$ct$clear| |"
+
+    if ! [[ "$hfw" =~ ^[0-9]+$ ]]; then
+      hfw="-"
+    fi
+
+    out+="\e[30m$color$hfw$clear| |"
+
     color="\e[42m"
     if [ "$temp" -ge "${my_target_temp}" ]; then
         color="\e[41m"
     fi
-    out+="\t\e[30m $color$temp $clear"
+    out+="\e[30m$color$temp$clear| |"
+
     color="\e[42m"
     if ! [[ "$cps" =~ ^[0-9]+$ ]]; then
-      cps="n/a"
+      cps="-"
     else
       if [ "$cps" -ge "${my_target_cps}" ]; then
         color="\e[41m"
       fi
     fi
-    out+="\t\t\e[30m $color $cps $clear \t\t $model \t $serial"
+    out+="\e[30m$color$cps$clear| |"
 
 
+    if ! [[ "$usc" =~ ^[0-9]+$ ]]; then
+      usc="-"
+    else
+      if [ "$usc" -ge "${my_target_usc}" ]; then
+        color="\e[41m"
+      fi
+    fi
 
-    c=i+1
-    if [ $((($i+1) % $COLUMNS)) -eq 0 ]; then
-		out+="\n"
-	fi
+
+    out+="\e[30m$color$usc$clear| |"
+
+    out+="$model|$serial"
+       out+="\n"
+
+    c=13
 done
 out+="\n"
+sep='|'
+
 echo -e "
-  HDD \t\t Size \t\t Hours \t\t Temperature\tPending Sectors\t Model \t\t\t Serial"
-printf "$out" | column -c $c -ts $',' | sed -e 's/^/  /'
+SMART Metrics 
+See Backblaze article for more information
+https://www.backblaze.com/blog/what-smart-stats-indicate-hard-drive-failures/"
+echo -e "  5 \t Reallocated_Sector_Ct"
+echo -e "  9 \t Power_On_Hours"
+echo -e "  12 \t Power_Cycle_Count"
+echo -e "  187 \t Reported_Uncorrectable Errors"
+echo -e "  188 \t Command_Timeout "
+echo -e "  189 \t High_Fly_Writes "
+echo -e "  194 \t Temperature_Celsius"
+echo -e "  197 \t Current_Pending_Sector "
+echo -e "  198 \t Offline_Uncorrectable "
+printf "$outnames"
+printf "$out" | column -t -s $sep
