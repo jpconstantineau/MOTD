@@ -51,17 +51,16 @@ for dev in /dev/sd?; do
         out+="?| |"
       fi
     fi
-
     color="\e[42m"
+
     if [ "$hours" -ge "${my_target_hours}" ]; then
         color="\e[41m"
     fi
-
     out+="\e[30m$color$hours$clear| |"
-
     color="\e[42m"
 
     out+="\e[30m$color$pc$clear| |"
+    color="\e[42m"
 
     if ! [[ "$rue" =~ ^[0-9]+$ ]]; then
       rue="-"
@@ -71,6 +70,7 @@ for dev in /dev/sd?; do
       fi
     fi
     out+="\e[30m$color$rue$clear| | |"
+    color="\e[42m"
 
     if ! [[ "$ct" =~ ^[0-9]+$ ]]; then
       ct="-"
@@ -80,20 +80,21 @@ for dev in /dev/sd?; do
       fi
     fi
     out+="\e[30m$color$ct$clear| |"
+    color="\e[42m"
 
     if ! [[ "$hfw" =~ ^[0-9]+$ ]]; then
       hfw="-"
     fi
 
     out+="\e[30m$color$hfw$clear| |"
-
     color="\e[42m"
+
     if [ "$temp" -ge "${my_target_temp}" ]; then
         color="\e[41m"
     fi
     out+="\e[30m$color$temp$clear| |"
-
     color="\e[42m"
+
     if ! [[ "$cps" =~ ^[0-9]+$ ]]; then
       cps="-"
     else
@@ -102,7 +103,7 @@ for dev in /dev/sd?; do
       fi
     fi
     out+="\e[30m$color$cps$clear| |"
-
+    color="\e[42m"
 
     if ! [[ "$usc" =~ ^[0-9]+$ ]]; then
       usc="-"
@@ -111,12 +112,11 @@ for dev in /dev/sd?; do
         color="\e[41m"
       fi
     fi
-
-
     out+="\e[30m$color$usc$clear| |"
+    color="\e[42m"
 
     out+="$model|$serial"
-       out+="\n"
+    out+="\n"
 
     c=13
 done
