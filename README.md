@@ -24,7 +24,7 @@ It just Messange Of The Day for linux ssh and terminal.
 2. Install `update-motd`
 3. 
 ```
-git clone https://github.com/RIKRUS/MOTD.git
+git clone https://github.com/jpconstantineau/MOTD.git
 cd MOTD
 sudo chown root:root *
 sudo cp * /etc/update-motd.d/
