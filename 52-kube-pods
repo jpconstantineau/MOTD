@@ -1,0 +1,4 @@
+#!/bin/bash
+echo
+k3s kubectl get pods -A -o wide
+
